@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button, Container, Input, InputGroup, Label, Select, Title, TotalAmount, Wrapper } from "./App.style";
+
 interface VehichleType {
   id: string;
   label: string;
@@ -11,50 +12,55 @@ interface Destination {
 }
 
 async function getVihicleTypes(): Promise<VehichleType[]> {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     resolve([
       { id: "1", label: "Car" },
       { id: "2", label: "Train" },
       { id: "3", label: "Bus" }
     ]);
-  })
+  });
 }
 
-async function calculateTotalAmount(): Promise<number> {
+async function calculateTotalAmount(
+  startingPoint: string,
+  destinationList: Destination[],
+  vehicleTypeList: VehichleType[],
+  expenseName: string
+): Promise<number> {
   return new Promise((resolve) => {
+    console.log("Calculating total amount with:", { startingPoint, destinationList, vehicleTypeList, expenseName });
     resolve(Number((Math.random() * 1000).toFixed(2)));
   });
 }
 
-
 function App() {
   const [startingPoint, setStartingPoint] = useState("");
-  const [destinationList, setDestinationList] = useState<Destination[]>([{
-    id: String(Math.random()),
-    value: ""
-  }]);
+  const [destinationList, setDestinationList] = useState<Destination[]>([{ id: String(Math.random()), value: "" }]);
   const [vehicleTypeList, setVehicleTypeList] = useState<VehichleType[]>([]);
   const [selectedVehicleType, setSelectedVehicleType] = useState<VehichleType>();
   const [expenseName, setExpenseName] = useState("");
-  const [totalAmount, setTotalAmount] = useState(0);
+  const [totalAmount, setTotalAmount] = useState(0); // Initial value set to 0
 
   const onAddDestination = () => {
-    setDestinationList([...destinationList, {
-      id: String(Math.random()),
-      value: ""
-    }]);
-  }
+    setDestinationList([...destinationList, { id: String(Math.random()), value: "" }]);
+  };
 
   useEffect(() => {
     getVihicleTypes().then((vehicleTypes) => {
       setVehicleTypeList(vehicleTypes);
       setSelectedVehicleType(vehicleTypes[0]);
     });
-  }, [])
+  }, []);
 
   useEffect(() => {
-    setExpenseName(`${startingPoint} - ${destinationList.map((dest) => dest.value).join(" -")}`);
-  }, [startingPoint, destinationList])
+    setExpenseName(`${startingPoint} - ${destinationList.map((dest) => dest.value).join(" - ")}`);
+  }, [startingPoint, destinationList]);
+
+  useEffect(() => {
+    if (startingPoint && destinationList.length && vehicleTypeList.length > 0 && selectedVehicleType) {
+      calculateTotalAmount(startingPoint, destinationList, vehicleTypeList, expenseName).then(setTotalAmount);
+    }
+  }, [startingPoint, destinationList, vehicleTypeList, expenseName, selectedVehicleType]);
 
   return (
     <Wrapper>
@@ -73,12 +79,10 @@ function App() {
 
         {destinationList.map((destination) => {
           const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-            const destinationIndex = destinationList.findIndex((dest) => dest.id === destination.id);
-            const newDestination = { ...destination, value: e.target.value };
-            const newDestinationList = [...destinationList];
-            newDestinationList[destinationIndex] = newDestination;
-            setDestinationList(newDestinationList);
-          }
+            setDestinationList((prev) =>
+              prev.map((dest) => (dest.id === destination.id ? { ...dest, value: e.target.value } : dest))
+            );
+          };
           return (
             <InputGroup key={destination.id}>
               <Label htmlFor={`dest-${destination.id}`}>Destination</Label>
@@ -90,10 +94,11 @@ function App() {
                 onChange={onChange}
               />
             </InputGroup>
-          )
+          );
         })}
         <Button onClick={onAddDestination} type="button">+ Add Destination</Button>
-        <Select value={selectedVehicleType?.id || ''}
+        <Select
+          value={selectedVehicleType?.id || ""}
           onChange={(e) => {
             const selectedId = e.target.value;
             const selectedVehicle = vehicleTypeList.find((vehicle) => vehicle.id === selectedId);
@@ -106,12 +111,7 @@ function App() {
         </Select>
         <InputGroup>
           <Label htmlFor="expense_name">Expense Name</Label>
-          <Input
-            id="expense_name"
-            placeholder=""
-            name="expense_name"
-            value={expenseName}
-          />
+          <Input id="expense_name" placeholder="" name="expense_name" value={expenseName} readOnly />
         </InputGroup>
         <TotalAmount>Total Amount: ${totalAmount}</TotalAmount>
         <Button type="submit">Submit</Button>
